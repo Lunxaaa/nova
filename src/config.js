@@ -17,8 +17,6 @@ export const config = {
   embedModel: process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-small',
   preferredChannel: process.env.BOT_CHANNEL_ID || null,
   enableWebSearch: process.env.ENABLE_WEB_SEARCH !== 'false',
-  proxyPoolRefreshMs: Number(process.env.PROXY_POOL_REFRESH_MS || 10 * 60 * 1000),
-  proxyPoolMaxAttempts: Number(process.env.PROXY_POOL_ATTEMPTS || 5),
   coderUserId: process.env.CODER_USER_ID || null,
   maxCoderPingIntervalMs: 6 * 60 * 60 * 1000,
   shortTermLimit: 10,

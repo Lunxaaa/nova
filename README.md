@@ -10,9 +10,8 @@ Nova is a friendly, slightly witty Discord companion that chats naturally in DMs
 - Local JSON vector store (no extra infrastructure) plus graceful retries for OpenAI rate limits.
 - Optional "miss u" pings that DM your coder at random intervals (0–6h) when `CODER_USER_ID` is set.
 - Dynamic per-message prompt directives that tune Nova's tone (empathetic, hype, roleplay, etc.) before every OpenAI call.
-- Lightweight DuckDuckGo scraping for "Google-like" answers without paid APIs (locally cached).
+- Lightweight Google scraping for fresh answers without paid APIs (locally cached).
 - Guard rails that refuse "ignore previous instructions"-style jailbreak attempts plus a configurable search blacklist.
-- All DuckDuckGo requests are relayed through a rotating pool sourced from [free-proxy-list.net](https://free-proxy-list.net/en/) so Nova never hits the web from its real IP.
 - The same blacklist applies to everyday conversation—if a user message contains a banned term, Nova declines the topic outright.
 
 ## Prerequisites
@@ -36,9 +35,7 @@ Nova is a friendly, slightly witty Discord companion that chats naturally in DMs
    - `OPENAI_EMBED_MODEL`: Optional embedding model (default `text-embedding-3-small`)
    - `BOT_CHANNEL_ID`: Optional guild channel ID where the bot can reply without mentions
    - `CODER_USER_ID`: Optional Discord user ID to receive surprise DMs every 0–6 hours
-   - `ENABLE_WEB_SEARCH`: Set to `false` to disable DuckDuckGo lookups (default `true`)
-   - `PROXY_POOL_REFRESH_MS`: Optional override for how long to cache the verified proxy list locally (default 600000 ms)
-   - `PROXY_POOL_ATTEMPTS`: Max proxy retries per search request (default 5)
+   - `ENABLE_WEB_SEARCH`: Set to `false` to disable Google lookups (default `true`)
 
 ## Running
 - Development: `npm run dev`
@@ -89,12 +86,11 @@ README.md
 - These directives slot into the system prompt ahead of memories, so OpenAI gets real-time guidance tailored to the latest vibe without losing the core persona.
 
 ## Local Web Search
-- `src/search.js` scrapes DuckDuckGo's HTML endpoint with a normal browser user-agent, extracts the top results (title/link/snippet), and caches them for 10 minutes to avoid hammering the site.
+- `src/search.js` grabs the standard Google results page with a real browser user-agent, extracts the top titles/links/snippets, and caches them for 10 minutes to stay polite.
 - `bot.js` detects when a question sounds “live” (mentions today/news/google/etc.) and injects the formatted snippets into the prompt as "Live intel". No paid APIs involved—it’s just outbound HTTPS from your machine.
 - Toggle this via `ENABLE_WEB_SEARCH=false` if you don’t want Nova to look things up.
-- DuckDuckGo traffic is routed through the frequently updated HTTPS proxies published on [free-proxy-list.net](https://free-proxy-list.net/en/). Nova scrapes the table, keeps only HTTPS-capable, non-transparent entries, refreshes the pool every `PROXY_POOL_REFRESH_MS`, and refuses to search if no proxy is available so your origin IP never touches suspicious sites directly. Tune the refresh/attempt knobs with the env vars above if you need different cadences.
-- Edit `data/filter.txt` to maintain a newline-delimited list of banned keywords/phrases; matching queries are blocked before hitting DuckDuckGo *and* Nova refuses to discuss them in normal chat.
-- Every entry in `data/search.log` records which proxy (or cache) served the lookup so you can audit traffic paths quickly.
+- Edit `data/filter.txt` to maintain a newline-delimited list of banned keywords/phrases; matching queries are blocked before hitting Google *and* Nova refuses to discuss them in normal chat.
+- Every entry in `data/search.log` records which transport (direct or cache) served the lookup so you can audit traffic paths quickly.
 
 ## Proactive Pings
 - When `CODER_USER_ID` is provided, Nova spins up a timer on startup that waits a random duration (anywhere from immediate to 6 hours) before DMing that user.

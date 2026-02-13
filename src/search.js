@@ -1,8 +1,6 @@
 import { load as loadHtml } from 'cheerio';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { ProxyAgent } from 'undici';
-import { config } from './config.js';
 
 const logFile = path.resolve('data', 'search.log');
 const filterFile = path.resolve('data', 'filter.txt');
@@ -10,15 +8,8 @@ const filterFile = path.resolve('data', 'filter.txt');
 const cache = new Map();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const FILTER_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const FREE_PROXY_LIST_URL = 'https://free-proxy-list.net/en/';
-const PROXY_LINE_REGEX = /^\d{1,3}(?:\.\d{1,3}){3}:\d{2,5}$/;
-const PROXY_REFRESH_MS = config.proxyPoolRefreshMs || 10 * 60 * 1000;
-const PROXY_MAX_ATTEMPTS = Math.max(1, config.proxyPoolMaxAttempts || 5);
 
 let cachedFilters = { terms: [], expires: 0 };
-let proxyPool = [];
-let proxyPoolExpires = 0;
-let proxyCursor = 0;
 
 function makeCacheKey(query) {
   return query.trim().toLowerCase();
@@ -47,7 +38,9 @@ function sanitizeText(text) {
 
 function absoluteUrl(href) {
   if (!href) return '';
-  if (href.startsWith('http')) return href;
+  if (href.startsWith('http://') || href.startsWith('https://')) {
+    return href;
+  }
   return `https://duckduckgo.com${href}`;
 }
 
@@ -72,15 +65,15 @@ async function loadBlockedTerms() {
   }
 }
 
-export async function detectFilteredPhrase(text) {
-  return findBlockedTerm(text);
-}
-
 async function findBlockedTerm(query) {
   if (!query) return null;
   const lowered = query.toLowerCase();
   const terms = await loadBlockedTerms();
   return terms.find((term) => lowered.includes(term)) || null;
+}
+
+export async function detectFilteredPhrase(text) {
+  return findBlockedTerm(text);
 }
 
 function createBlockedError(term) {
@@ -90,166 +83,13 @@ function createBlockedError(term) {
   return error;
 }
 
-function createProxyUnavailableError(reason) {
-  const error = new Error(reason || 'Proxy network unavailable');
-  error.code = 'SEARCH_PROXY_UNAVAILABLE';
+function createSearchUnavailableError(reason) {
+  const error = new Error(reason || 'Search network unavailable');
+  error.code = 'SEARCH_NETWORK_UNAVAILABLE';
   return error;
 }
 
-function normalizeProxyEntries(entries) {
-  if (!entries?.length) return [];
-  const seen = new Set();
-  entries
-    .map((line) => line.trim())
-    .forEach((line) => {
-      if (PROXY_LINE_REGEX.test(line) && !seen.has(line)) {
-        seen.add(line);
-      }
-    });
-  return Array.from(seen);
-}
-
-function removeProxyFromPool(proxy) {
-  if (!proxy) return;
-  proxyPool = proxyPool.filter((entry) => entry !== proxy);
-  if (!proxyPool.length) {
-    proxyPoolExpires = 0;
-    proxyCursor = 0;
-  }
-}
-
-async function fetchFreeProxyList() {
-  const response = await fetch(FREE_PROXY_LIST_URL, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36',
-      Accept: 'text/html',
-    },
-  });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch free-proxy-list.net feed (HTTP ${response.status})`);
-  }
-  const html = await response.text();
-  const $ = loadHtml(html);
-  const table = $('table.table.table-striped.table-bordered').first();
-  const entries = [];
-  table.find('tbody tr').each((_, row) => {
-    const cells = $(row).find('td');
-    if (!cells?.length) return undefined;
-    const ip = $(cells[0]).text().trim();
-    const port = $(cells[1]).text().trim();
-    const anonymity = $(cells[4]).text().trim().toLowerCase();
-    const https = $(cells[6]).text().trim().toLowerCase();
-    if (ip && port && https === 'yes' && !anonymity.includes('transparent')) {
-      entries.push(`${ip}:${port}`);
-    }
-    return undefined;
-  });
-  return normalizeProxyEntries(entries);
-}
-
-async function hydrateProxyPool() {
-  let lastError = null;
-
-  try {
-    const verifiedProxies = await fetchFreeProxyList();
-    if (!verifiedProxies.length) {
-      throw new Error('free-proxy-list.net returned zero usable entries');
-    }
-    proxyPool = verifiedProxies;
-    proxyPoolExpires = Date.now() + PROXY_REFRESH_MS;
-    proxyCursor = 0;
-    console.info(`[search] Loaded ${verifiedProxies.length} proxies from free-proxy-list.net`);
-    return;
-  } catch (error) {
-    lastError = error;
-    console.warn(`[search] Free proxy source failed: ${error.message}`);
-  }
-
-  throw createProxyUnavailableError(lastError?.message || 'Proxy list unavailable');
-}
-
-async function ensureProxyPool() {
-  if (proxyPool.length && Date.now() < proxyPoolExpires) {
-    return;
-  }
-  await hydrateProxyPool();
-}
-
-async function getProxyInfo() {
-  await ensureProxyPool();
-  if (!proxyPool.length) {
-    throw createProxyUnavailableError('Proxy pool empty');
-  }
-  const proxy = proxyPool[proxyCursor % proxyPool.length];
-  proxyCursor = (proxyCursor + 1) % proxyPool.length;
-  return {
-    proxy,
-    agent: new ProxyAgent(`http://${proxy}`),
-  };
-}
-
-async function fetchDuckDuckGoHtml(url, headers) {
-  const maxAttempts = PROXY_MAX_ATTEMPTS;
-  let lastError = null;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    let proxyInfo = null;
-    try {
-      const options = { headers };
-      proxyInfo = await getProxyInfo();
-      options.dispatcher = proxyInfo.agent;
-      const response = await fetch(url, options);
-      if (!response.ok) {
-        throw new Error(`DuckDuckGo request failed (${response.status})`);
-      }
-      const html = await response.text();
-      return {
-        html,
-        proxy: proxyInfo?.proxy || null,
-      };
-    } catch (error) {
-      lastError = error;
-      if (proxyInfo?.proxy) {
-        removeProxyFromPool(proxyInfo.proxy);
-      }
-    }
-  }
-
-  throw createProxyUnavailableError(lastError?.message || 'All proxies failed');
-}
-
-export async function searchWeb(query, limit = 3) {
-  if (!query?.trim()) {
-    return { results: [], proxy: null, fromCache: false };
-  }
-  const blockedTerm = await findBlockedTerm(query);
-  if (blockedTerm) {
-    throw createBlockedError(blockedTerm);
-  }
-  const cached = getCache(query);
-  if (cached) {
-    return { results: cached, proxy: 'cache', fromCache: true };
-  }
-
-  const params = new URLSearchParams({ q: query, kl: 'us-en' });
-  const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
-    Accept: 'text/html',
-  };
-
-  let html;
-  let proxyLabel = null;
-  try {
-    const { html: fetchedHtml, proxy } = await fetchDuckDuckGoHtml(`https://duckduckgo.com/html/?${params.toString()}`, headers);
-    html = fetchedHtml;
-    proxyLabel = proxy || 'proxy-unknown';
-  } catch (error) {
-    if (error?.code === 'SEARCH_PROXY_UNAVAILABLE') {
-      throw error;
-    }
-    console.warn('[search] DuckDuckGo request failed:', error);
-    return { results: [], proxy: null, fromCache: false };
-  }
+function parseDuckDuckGoResults(html, limit) {
   const $ = loadHtml(html);
   const results = [];
 
@@ -264,15 +104,55 @@ export async function searchWeb(query, limit = 3) {
     return undefined;
   });
 
+  return results;
+}
+
+export async function searchWeb(query, limit = 3) {
+  if (!query?.trim()) {
+    return { results: [], proxy: 'duckduckgo', fromCache: false };
+  }
+
+  const blockedTerm = await findBlockedTerm(query);
+  if (blockedTerm) {
+    throw createBlockedError(blockedTerm);
+  }
+
+  const cached = getCache(query);
+  if (cached) {
+    return { results: cached, proxy: 'duckduckgo-cache', fromCache: true };
+  }
+
+  const params = new URLSearchParams({ q: query, kl: 'us-en' });
+  let response;
+  try {
+    response = await fetch(`https://duckduckgo.com/html/?${params.toString()}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+        Accept: 'text/html',
+      },
+    });
+  } catch (error) {
+    console.warn('[search] DuckDuckGo request failed:', error.message);
+    throw createSearchUnavailableError('DuckDuckGo request failed');
+  }
+
+  if (!response.ok) {
+    console.warn(`[search] DuckDuckGo request failed with status ${response.status}`);
+    throw createSearchUnavailableError(`DuckDuckGo response ${response.status}`);
+  }
+
+  const html = await response.text();
+  const results = parseDuckDuckGoResults(html, limit);
+
   setCache(query, results);
-  return { results, proxy: proxyLabel || 'proxy-unknown', fromCache: false };
+  return { results, proxy: 'duckduckgo', fromCache: false };
 }
 
 export async function appendSearchLog({ userId, query, results, proxy }) {
   try {
     await fs.mkdir(path.dirname(logFile), { recursive: true });
     const timestamp = new Date().toISOString();
-    const proxyTag = proxy || 'direct';
+    const proxyTag = proxy || 'duckduckgo';
     const lines = [
       `time=${timestamp} user=${userId} proxy=${proxyTag} query=${JSON.stringify(query)}`,
       ...results.map((entry, idx) => `  ${idx + 1}. ${entry.title} :: ${entry.url} :: ${entry.snippet}`),

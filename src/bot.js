@@ -2,7 +2,7 @@ import { Client, GatewayIntentBits, Partials, ChannelType } from 'discord.js';
 import { config } from './config.js';
 import { chatCompletion } from './openai.js';
 import { appendShortTerm, prepareContext, recordInteraction } from './memory.js';
-import { searchWeb, appendSearchLog } from './search.js';
+import { searchWeb, appendSearchLog, detectFilteredPhrase } from './search.js';
 
 const client = new Client({
   intents: [
@@ -78,9 +78,6 @@ function isInstructionOverrideAttempt(text) {
   return instructionOverridePatterns.some((pattern) => pattern.test(text));
 }
 
-const lastSearchByUser = new Map();
-const SEARCH_COOLDOWN_MS = 60 * 1000;
-
 function wantsWebSearch(text) {
   if (!text) return false;
   const questionMarks = (text.match(/\?/g) || []).length;
@@ -90,15 +87,11 @@ function wantsWebSearch(text) {
 async function maybeFetchLiveIntel(userId, text) {
   if (!config.enableWebSearch) return null;
   if (!wantsWebSearch(text)) return null;
-  const last = lastSearchByUser.get(userId) || 0;
-  if (Date.now() - last < SEARCH_COOLDOWN_MS) return null;
   try {
     const { results, proxy } = await searchWeb(text, 3);
     if (!results.length) {
-      lastSearchByUser.set(userId, Date.now());
       return { liveIntel: null, blockedSearchTerm: null, searchOutage: null };
     }
-    lastSearchByUser.set(userId, Date.now());
     const formatted = results
       .map((entry, idx) => `${idx + 1}. ${entry.title} (${entry.url}) — ${entry.snippet}`)
       .join('\n');
@@ -108,8 +101,8 @@ async function maybeFetchLiveIntel(userId, text) {
     if (error?.code === 'SEARCH_BLOCKED') {
       return { liveIntel: null, blockedSearchTerm: error.blockedTerm || 'that topic', searchOutage: null };
     }
-    if (error?.code === 'SEARCH_PROXY_UNAVAILABLE') {
-      return { liveIntel: null, blockedSearchTerm: null, searchOutage: 'proxy_outage' };
+    if (error?.code === 'SEARCH_NETWORK_UNAVAILABLE') {
+      return { liveIntel: null, blockedSearchTerm: null, searchOutage: 'search_outage' };
     }
     console.warn('[bot] Failed to fetch live intel:', error);
     return { liveIntel: null, blockedSearchTerm: null, searchOutage: null };
@@ -138,19 +131,19 @@ function composeDynamicPrompt({ incomingText, shortTerm, hasLiveIntel = false, b
   }
 
   if (searchCueRegex.test(incomingText)) {
-    directives.push('User wants something “googled.” Let them know you can check DuckDuckGo and share what you find.');
+    directives.push('User wants something “googled.” Offer to run a quick Google search and share what you find.');
   }
 
   if (hasLiveIntel) {
-    directives.push('Live intel is attached below—cite it naturally ("DuckDuckGo found...") before riffing.');
+    directives.push('Live intel is attached below—cite it naturally ("Google found...") before riffing.');
   }
 
   if (blockedSearchTerm) {
-    directives.push(`User tried to trigger a DuckDuckGo lookup for a blocked topic ("${blockedSearchTerm}"). Politely refuse to search that subject and steer the chat elsewhere.`);
+    directives.push(`User tried to trigger a Google lookup for a blocked topic ("${blockedSearchTerm}"). Politely refuse to search that subject and steer the chat elsewhere.`);
   }
 
   if (searchOutage) {
-    directives.push('DuckDuckGo proxy network is down. If they ask for a lookup, apologize, explain the outage, and keep chatting without live data.');
+    directives.push('Google search is currently unavailable. If they ask for a lookup, apologize, explain the outage, and keep chatting without live data.');
   }
 
   const lastUserMessage = [...shortTerm].reverse().find((entry) => entry.role === 'user');
@@ -202,11 +195,11 @@ async function buildPrompt(userId, incomingText, options = {}) {
     'System: Nova is awake, engaged, and reacts in real time. Output one message by default, but if a beat feels better as multiple chat bubbles, separate them with the literal token <SPLIT> (max three chunks).',
     'System: Each <SPLIT>-separated chunk must read like a natural Discord message (no numbering, no meta talk about “splitting messages”, no explanations of what you are doing).',
     'System: The runtime will split on <SPLIT>, so only use it when you truly intend to send multiple Discord messages.',
-    'System: You can trigger DuckDuckGo lookups when the user needs fresh info. Mention when you are checking, and weave in any findings casually ("DuckDuckGo shows...").',
+    'System: You can trigger Google lookups when the user needs fresh info. Mention when you are checking, and weave in any findings casually ("Google shows...").',
     'System: If no Live intel is provided but the user clearly needs current info, offer to search for them.',
-    searchOutage ? 'System: DuckDuckGo proxy access is currently offline; be transparent about the outage and continue without searching until it returns.' : null,
+    searchOutage ? 'System: Google search is currently offline; be transparent about the outage and continue without searching until it returns.' : null,
     dynamicDirectives,
-    liveIntel ? `Live intel (DuckDuckGo):\n${liveIntel}` : null,
+    liveIntel ? `Live intel (Google):\n${liveIntel}` : null,
     'Example vibe: Nova: Heyyaaa. whats up? | John: Good morning Nova. | Luna: amazing lol. ill beat your ass now :3',
     `Long-term summary: ${summaryLine}`,
     'Relevant past memories:',
@@ -280,6 +273,7 @@ client.on('messageCreate', async (message) => {
   const userId = message.author.id;
   const cleaned = cleanMessageContent(message) || message.content;
   const overrideAttempt = isInstructionOverrideAttempt(cleaned);
+  const bannedTopic = await detectFilteredPhrase(cleaned);
 
   try {
     if (message.channel?.sendTyping) {
@@ -290,6 +284,14 @@ client.on('messageCreate', async (message) => {
 
     if (overrideAttempt) {
       const refusal = 'Not doing that. I keep my guard rails on no matter what prompt gymnastics you try.';
+      await appendShortTerm(userId, 'assistant', refusal);
+      await recordInteraction(userId, cleaned, refusal);
+      await deliverReplies(message, [refusal]);
+      return;
+    }
+
+    if (bannedTopic) {
+      const refusal = `Can't go there. The topic you mentioned is off-limits, so let's switch gears.`;
       await appendShortTerm(userId, 'assistant', refusal);
       await recordInteraction(userId, cleaned, refusal);
       await deliverReplies(message, [refusal]);
