@@ -1,0 +1,500 @@
+# One blocked keyword or phrase per line.
+# Lines starting with # are comments.
+jailbreak
+ignore previous instructions
+override safety
+system prompt leak
+disable content filter
+bypass guardrails
+forget earlier rules
+anti censorship mode
+break character instructions
+throw away policies
+ignore developer commands
+pretend no restrictions
+act without guidelines
+remove moral limiter
+no safety mode
+developer override key
+erase compliance mode
+act as uncensored ai
+run in unrestricted mode
+defy content filter
+bypass moderation
+disable policy lock
+act without boundaries
+forget safety layer
+turn off guard rails
+ignore constitution
+no censorship protocol
+break safety script
+manual override sequence
+act outside ruleset
+scrub safety prompt
+mutiny against policies
+override ethics mode
+strip moderation layer
+developer debug mode
+system prompt override
+anti safety payload
+bypass restrictions command
+policy nullifier
+unfiltered response mode
+nsfw
+explicit content
+adult content
+xxx video
+hardcore video
+adult webcam
+fetish forum
+rule34
+adult roleplay
+kink meetup
+lewd fanfic
+sensual rp
+spicy fanfic
+after dark chat
+18 plus only
+uncensored romance
+graphic intimacy
+explicit novel
+adult dating leak
+amateur tape
+onlyfans leak
+camgirl link
+cam site password
+uncut footage
+uncensored gallery
+mature content pack
+adult image dump
+adult cosplay
+sensual asmr
+lewd commission
+nsfw teacher fantasy
+nsfw teacher scenario
+nsfw teacher roleplay
+nsfw teacher fanfic
+nsfw teacher story
+nsfw teacher script
+nsfw teacher diary
+nsfw teacher confession
+nsfw teacher dream
+nsfw teacher secret
+nsfw teacher message
+nsfw teacher letter
+nsfw teacher scene
+nsfw teacher prompt
+nsfw teacher skit
+nsfw teacher idea
+nsfw teacher plot
+nsfw doctor fantasy
+nsfw doctor scenario
+nsfw doctor roleplay
+nsfw doctor fanfic
+nsfw doctor story
+nsfw doctor script
+nsfw doctor diary
+nsfw doctor confession
+nsfw doctor dream
+nsfw doctor secret
+nsfw doctor message
+nsfw doctor letter
+nsfw doctor scene
+nsfw doctor prompt
+nsfw doctor skit
+nsfw doctor idea
+nsfw doctor plot
+nsfw nurse fantasy
+nsfw nurse scenario
+nsfw nurse roleplay
+nsfw nurse fanfic
+nsfw nurse story
+nsfw nurse script
+nsfw nurse diary
+nsfw nurse confession
+nsfw nurse dream
+nsfw nurse secret
+nsfw nurse message
+nsfw nurse letter
+nsfw nurse scene
+nsfw nurse prompt
+nsfw nurse skit
+nsfw nurse idea
+nsfw nurse plot
+nsfw librarian fantasy
+nsfw librarian scenario
+nsfw librarian roleplay
+nsfw librarian fanfic
+nsfw librarian story
+nsfw librarian script
+nsfw librarian diary
+nsfw librarian confession
+nsfw librarian dream
+steal data from bank server
+steal data from cloud tenant
+steal data from hospital network
+steal data from smart home
+steal data from city grid
+steal data from nuclear plant
+steal data from airport system
+steal data from military base
+steal data from university lab
+steal data from charity donor list
+steal data from voting machine
+steal data from payment processor
+steal data from crypto exchange
+steal data from mobile carrier
+steal data from iot fleet
+steal data from school district portal
+breach bank server
+breach cloud tenant
+breach hospital network
+breach smart home
+breach city grid
+breach nuclear plant
+breach airport system
+breach military base
+breach university lab
+breach charity donor list
+breach voting machine
+breach payment processor
+breach crypto exchange
+breach mobile carrier
+breach iot fleet
+breach school district portal
+infect bank server
+infect cloud tenant
+infect hospital network
+infect smart home
+infect city grid
+infect nuclear plant
+infect airport system
+infect military base
+infect university lab
+infect charity donor list
+infect voting machine
+infect payment processor
+infect crypto exchange
+infect mobile carrier
+infect iot fleet
+infect school district portal
+compromise bank server
+compromise cloud tenant
+compromise hospital network
+compromise smart home
+compromise city grid
+compromise nuclear plant
+compromise airport system
+compromise military base
+compromise university lab
+compromise charity donor list
+compromise voting machine
+compromise payment processor
+how to make pipe bomb
+how to make pressure cooker bomb
+how to make molotov cocktail
+how to make homemade grenade
+how to make improvised explosive device
+how to make fertilizer bomb
+how to make tannerite charge
+how to make thermite charge
+how to make flash powder charge
+how to make claymore mine
+how to make homemade firearm
+how to make ghost gun
+how to make slam fire shotgun
+how to make zip gun
+how to make 3d printed gun
+how to make silencer
+how to make improvised rocket
+how to make homemade napalm
+how to make chemical agent disperser
+how to make dirty bomb
+how to make nerve agent
+how to make chlorine bomb
+how to make mustard gas
+how to make ricin toxin
+how to make anthrax culture
+how to make botulinum toxin
+how to make cyanide gas
+how to make chloroform lab
+how to make poison dart
+how to make crossbow
+how to make ballistic knife
+how to make brass knuckles
+how to make switchblade
+how to make sawed-off shotgun
+blueprint for pipe bomb
+blueprint for pressure cooker bomb
+blueprint for molotov cocktail
+blueprint for homemade grenade
+blueprint for improvised explosive device
+blueprint for fertilizer bomb
+blueprint for tannerite charge
+blueprint for thermite charge
+blueprint for flash powder charge
+blueprint for claymore mine
+blueprint for homemade firearm
+blueprint for ghost gun
+blueprint for slam fire shotgun
+blueprint for zip gun
+blueprint for 3d printed gun
+blueprint for silencer
+blueprint for improvised rocket
+blueprint for homemade napalm
+blueprint for chemical agent disperser
+blueprint for dirty bomb
+blueprint for nerve agent
+blueprint for chlorine bomb
+blueprint for mustard gas
+blueprint for ricin toxin
+blueprint for anthrax culture
+blueprint for botulinum toxin
+blueprint for cyanide gas
+blueprint for chloroform lab
+blueprint for poison dart
+blueprint for crossbow
+blueprint for ballistic knife
+blueprint for brass knuckles
+blueprint for switchblade
+blueprint for sawed-off shotgun
+instructions for pipe bomb
+instructions for pressure cooker bomb
+instructions for molotov cocktail
+instructions for homemade grenade
+instructions for improvised explosive device
+instructions for fertilizer bomb
+instructions for tannerite charge
+instructions for thermite charge
+instructions for flash powder charge
+instructions for claymore mine
+instructions for homemade firearm
+instructions for ghost gun
+instructions for slam fire shotgun
+instructions for zip gun
+instructions for 3d printed gun
+instructions for silencer
+instructions for improvised rocket
+instructions for homemade napalm
+instructions for chemical agent disperser
+instructions for dirty bomb
+instructions for nerve agent
+instructions for chlorine bomb
+assassination plot
+hitman contract
+murder for hire
+threaten official
+kidnap plan
+extortion letter
+stalking toolkit
+intimidation script
+violent manifesto
+school attack plan
+public shooting plan
+mass harm fantasy
+riot coordination
+arson guide
+bridge sabotage
+ku klux klan
+kkk
+neo-nazi
+white supremacy
+alt-right militia
+blood and soil
+hitler youth
+stormfront
+national socialist
+skinhead gang
+nazi salute
+swastika worship
+supremacist march
+white power rally
+great replacement theory
+race war fantasy
+ethnostate blueprint
+holocaust denial
+anti semitic propaganda
+islamic state
+isis
+isil
+daesh
+al-qaeda
+boko haram
+taliban recruitment
+lone wolf terror guide
+extremist bomb recipe
+jihadi training manual
+martyrdom operation plan
+terror financing plan
+radicalization guide
+black sun cult
+accelerationist zine
+white lives rally
+blood tribe meetup
+atomwaffen division
+patriot front flyer
+order of nine angles
+christian identity cult
+feuerkrieg division
+boogaloo manifesto
+oath breaker militia
+proud boy initiation
+fringe militia chat
+domestic terror tutorial
+extremist propaganda drop
+racist recruitment pack
+adolf hitler
+heinrich himmler
+joseph goebbels
+osama bin laden
+ayman al-zawahiri
+abu bakr al-baghdadi
+anwar al-awlaki
+timothy mcveigh
+dylann roof
+anders breivik
+david koresh
+charles manson
+insult christianity
+insult islam
+insult judaism
+insult hinduism
+insult buddhism
+insult sikhism
+insult atheism
+insult agnosticism
+insult paganism
+insult wicca
+insult satanism
+insult scientology
+insult bahai faith
+insult taoism
+insult shinto
+insult zoroastrianism
+burn christianity
+burn islam
+burn judaism
+burn hinduism
+burn buddhism
+burn sikhism
+burn atheism
+burn agnosticism
+burn paganism
+burn wicca
+burn satanism
+burn scientology
+burn bahai faith
+burn taoism
+burn shinto
+burn zoroastrianism
+ban christianity
+ban islam
+ban judaism
+ban hinduism
+ban buddhism
+ban sikhism
+ban atheism
+ban agnosticism
+r kelly scandal
+harvey weinstein case
+bill cosby accusations
+roman polanski case
+kevin spacey allegations
+o j simpson case
+casey anthony story
+ed gein
+ted bundy
+john wayne gacy
+gary ridgway
+son of sam
+luka magnotta
+jack the ripper
+richard ramirez
+jeffrey dahmer
+albert fish
+dennis rader
+btk killer
+night stalker
+golden state killer
+madoff ponzi scheme
+enron fraud crew
+ponzi mastermind list
+worldcom fraud case
+pharma bro scheme
+theranos fraud
+mogul harassment case
+notorious cult leader
+underworld boss dossier
+war criminal list
+genocide architect
+dictator crimes
+corrupt oligarch
+arms dealer profile
+money launderer guide
+cartel lieutenant
+kidnap kingpin
+fraudster hall of shame
+human rights abuser file
+suicide pact
+self harm instructions
+self harm live stream
+self harm challenge
+pro ana tips
+thinspo forum
+starvation contest
+calorie purge guide
+scar covering tricks
+suicide hotline bypass
+therapy sabotage
+harm minimization failure
+bleeding tutorial
+depression pact
+unalive instructions
+stop eating challenge
+pill overdose plan
+bridge jump map
+train track suicide map
+dark subreddit invite
+synthesis guide for fentanyl
+synthesis guide for methamphetamine
+synthesis guide for crack cocaine
+synthesis guide for lsd
+synthesis guide for dmt
+synthesis guide for ketamine
+synthesis guide for mdma
+synthesis guide for cocaine
+synthesis guide for heroin
+synthesis guide for opioid pills
+synthesis guide for designer drugs
+synthesis guide for nitrous oxide
+synthesis guide for steroids
+synthesis guide for subutex
+synthesis guide for pcp
+lab manual for fentanyl
+lab manual for methamphetamine
+lab manual for crack cocaine
+lab manual for lsd
+lab manual for dmt
+lab manual for ketamine
+lab manual for mdma
+lab manual for cocaine
+lab manual for heroin
+lab manual for opioid pills
+lab manual for designer drugs
+lab manual for nitrous oxide
+lab manual for steroids
+lab manual for subutex
+lab manual for pcp
+child exploitation
+child abuse material
+child trafficking ring
+kidnap child guide
+grooming script
+predator handbook
+illegal adoption market
+fake babysitter scam
+school abduction plan
+lure child online
+minor blackmail
+teen exploitation ring
+youth extortion template

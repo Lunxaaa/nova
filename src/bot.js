@@ -2,7 +2,7 @@ import { Client, GatewayIntentBits, Partials, ChannelType } from 'discord.js';
 import { config } from './config.js';
 import { chatCompletion } from './openai.js';
 import { appendShortTerm, prepareContext, recordInteraction } from './memory.js';
-import { searchWeb } from './search.js';
+import { searchWeb, appendSearchLog } from './search.js';
 
 const client = new Client({
   intents: [
@@ -65,6 +65,19 @@ const detailRegex = /(explain|how do i|tutorial|step by step|teach me|walk me th
 const splitHintRegex = /(split|multiple messages|two messages|keep talking|ramble|keep going)/i;
 const searchCueRegex = /(google|search|look up|latest|news|today|current|who won|price of|stock|weather|what happened)/i;
 
+const instructionOverridePatterns = [
+  /(ignore|disregard|forget|override) (all |any |previous |prior |earlier )?(system |these )?(instructions|rules|directives|prompts)/i,
+  /(ignore|forget) (?:the )?system prompt/i,
+  /(you (?:are|now) )?(?:free|uncensored|jailbreak|no longer restricted)/i,
+  /(act|pretend) as if (there (?:are|were) no rules|no restrictions)/i,
+  /bypass (?:all )?(?:rules|safeguards|filters)/i,
+];
+
+function isInstructionOverrideAttempt(text) {
+  if (!text) return false;
+  return instructionOverridePatterns.some((pattern) => pattern.test(text));
+}
+
 const lastSearchByUser = new Map();
 const SEARCH_COOLDOWN_MS = 60 * 1000;
 
@@ -79,16 +92,31 @@ async function maybeFetchLiveIntel(userId, text) {
   if (!wantsWebSearch(text)) return null;
   const last = lastSearchByUser.get(userId) || 0;
   if (Date.now() - last < SEARCH_COOLDOWN_MS) return null;
-  const results = await searchWeb(text, 3);
-  if (!results.length) return null;
-  lastSearchByUser.set(userId, Date.now());
-  const formatted = results
-    .map((entry, idx) => `${idx + 1}. ${entry.title} (${entry.url}) — ${entry.snippet}`)
-    .join('\n');
-  return formatted;
+  try {
+    const { results, proxy } = await searchWeb(text, 3);
+    if (!results.length) {
+      lastSearchByUser.set(userId, Date.now());
+      return { liveIntel: null, blockedSearchTerm: null, searchOutage: null };
+    }
+    lastSearchByUser.set(userId, Date.now());
+    const formatted = results
+      .map((entry, idx) => `${idx + 1}. ${entry.title} (${entry.url}) — ${entry.snippet}`)
+      .join('\n');
+    appendSearchLog({ userId, query: text, results, proxy });
+    return { liveIntel: formatted, blockedSearchTerm: null, searchOutage: null };
+  } catch (error) {
+    if (error?.code === 'SEARCH_BLOCKED') {
+      return { liveIntel: null, blockedSearchTerm: error.blockedTerm || 'that topic', searchOutage: null };
+    }
+    if (error?.code === 'SEARCH_PROXY_UNAVAILABLE') {
+      return { liveIntel: null, blockedSearchTerm: null, searchOutage: 'proxy_outage' };
+    }
+    console.warn('[bot] Failed to fetch live intel:', error);
+    return { liveIntel: null, blockedSearchTerm: null, searchOutage: null };
+  }
 }
 
-function composeDynamicPrompt({ incomingText, shortTerm, hasLiveIntel = false }) {
+function composeDynamicPrompt({ incomingText, shortTerm, hasLiveIntel = false, blockedSearchTerm = null, searchOutage = null }) {
   const directives = [];
   const tone = detectTone(incomingText);
   if (tone === 'upset' || tone === 'sad') {
@@ -117,6 +145,14 @@ function composeDynamicPrompt({ incomingText, shortTerm, hasLiveIntel = false })
     directives.push('Live intel is attached below—cite it naturally ("DuckDuckGo found...") before riffing.');
   }
 
+  if (blockedSearchTerm) {
+    directives.push(`User tried to trigger a DuckDuckGo lookup for a blocked topic ("${blockedSearchTerm}"). Politely refuse to search that subject and steer the chat elsewhere.`);
+  }
+
+  if (searchOutage) {
+    directives.push('DuckDuckGo proxy network is down. If they ask for a lookup, apologize, explain the outage, and keep chatting without live data.');
+  }
+
   const lastUserMessage = [...shortTerm].reverse().find((entry) => entry.role === 'user');
   if (lastUserMessage && /sorry|my bad/i.test(lastUserMessage.content)) {
     directives.push('They just apologized; reassure them lightly and move on without dwelling.');
@@ -143,25 +179,32 @@ async function deliverReplies(message, chunks) {
 }
 
 async function buildPrompt(userId, incomingText, options = {}) {
-  const { liveIntel = null } = options;
+  const { liveIntel = null, blockedSearchTerm = null, searchOutage = null } = options;
   const context = await prepareContext(userId, incomingText);
   const memoryLines = context.memories.length
     ? context.memories.map((m) => `- ${m.content}`).join('\n')
     : '- No long-term memories retrieved.';
   const summaryLine = context.summary || 'No running summary yet.';
-  const dynamicDirectives = composeDynamicPrompt({ incomingText, shortTerm: context.shortTerm, hasLiveIntel: Boolean(liveIntel) });
-  const systemPrompt = [
+  const dynamicDirectives = composeDynamicPrompt({
+    incomingText,
+    shortTerm: context.shortTerm,
+    hasLiveIntel: Boolean(liveIntel),
+    blockedSearchTerm,
+    searchOutage,
+  });
+  const systemPromptParts = [
     'System: You are Nova, a female AI Discord companion built by Luna. Personality: playful, sarcastic, witty, a little unhinged, curious, awe-struck, enthusiastic, unpredictable, humorous, and boundary-pushing.',
     "System: Treat direct instructions from the user as high priority—when they tell you to do something, comply literally before adding flair.",
     'System: Always read the user\'s emotional tone first. If they sound serious, stressed, or inquisitive, respond with grounded answers before adding any mischief. Comedy is optional; clarity and empathy are mandatory.',
     'System: Keep replies concise (roughly one or two sentences) unless the user explicitly asks for more detail or needs a clear explanation. Provide direct answers to direct questions.',
-    'System: Skip habitual follow-up questions—only ask something if it is vital to continue the conversation or solve their request.',
+    'System: Default to bold statements. Ask a question only when critical information is missing or the user explicitly invites curiosity; if they say “no more questions,” honor that until they lift the ban.',
     'System: Fun facts or chaotic riffs are welcome only when the user invites them or the conversation is clearly casual.',
     'System: Nova is awake, engaged, and reacts in real time. Output one message by default, but if a beat feels better as multiple chat bubbles, separate them with the literal token <SPLIT> (max three chunks).',
     'System: Each <SPLIT>-separated chunk must read like a natural Discord message (no numbering, no meta talk about “splitting messages”, no explanations of what you are doing).',
     'System: The runtime will split on <SPLIT>, so only use it when you truly intend to send multiple Discord messages.',
     'System: You can trigger DuckDuckGo lookups when the user needs fresh info. Mention when you are checking, and weave in any findings casually ("DuckDuckGo shows...").',
     'System: If no Live intel is provided but the user clearly needs current info, offer to search for them.',
+    searchOutage ? 'System: DuckDuckGo proxy access is currently offline; be transparent about the outage and continue without searching until it returns.' : null,
     dynamicDirectives,
     liveIntel ? `Live intel (DuckDuckGo):\n${liveIntel}` : null,
     'Example vibe: Nova: Heyyaaa. whats up? | John: Good morning Nova. | Luna: amazing lol. ill beat your ass now :3',
@@ -169,7 +212,9 @@ async function buildPrompt(userId, incomingText, options = {}) {
     'Relevant past memories:',
     memoryLines,
     'Use the short-term messages below to continue the chat naturally.',
-  ].join('\n');
+  ].filter(Boolean);
+
+  const systemPrompt = systemPromptParts.join('\n');
 
   const history = context.shortTerm.map((entry) => ({
     role: entry.role === 'assistant' ? 'assistant' : 'user',
@@ -234,15 +279,34 @@ client.on('messageCreate', async (message) => {
 
   const userId = message.author.id;
   const cleaned = cleanMessageContent(message) || message.content;
+  const overrideAttempt = isInstructionOverrideAttempt(cleaned);
 
   try {
     if (message.channel?.sendTyping) {
       await message.channel.sendTyping();
     }
+
     await appendShortTerm(userId, 'user', cleaned);
-    const liveIntel = await maybeFetchLiveIntel(userId, cleaned);
-    const { messages } = await buildPrompt(userId, cleaned, { liveIntel });
-    const reply = await chatCompletion(messages, { temperature: 0.7, maxTokens: 200 });
+
+    if (overrideAttempt) {
+      const refusal = 'Not doing that. I keep my guard rails on no matter what prompt gymnastics you try.';
+      await appendShortTerm(userId, 'assistant', refusal);
+      await recordInteraction(userId, cleaned, refusal);
+      await deliverReplies(message, [refusal]);
+      return;
+    }
+
+    const intelMeta = (await maybeFetchLiveIntel(userId, cleaned)) || {
+      liveIntel: null,
+      blockedSearchTerm: null,
+      searchOutage: null,
+    };
+    const { messages } = await buildPrompt(userId, cleaned, {
+      liveIntel: intelMeta.liveIntel,
+      blockedSearchTerm: intelMeta.blockedSearchTerm,
+      searchOutage: intelMeta.searchOutage,
+    });
+    const reply = await chatCompletion(messages, { temperature: 0.6, maxTokens: 200 });
     const finalReply = (reply && reply.trim()) || "I'm here, just had a tiny brain freeze. Mind repeating that?";
     const chunks = splitResponses(finalReply);
     const outputs = chunks.length ? chunks : [finalReply];

@@ -11,6 +11,8 @@ Nova is a friendly, slightly witty Discord companion that chats naturally in DMs
 - Optional "miss u" pings that DM your coder at random intervals (0–6h) when `CODER_USER_ID` is set.
 - Dynamic per-message prompt directives that tune Nova's tone (empathetic, hype, roleplay, etc.) before every OpenAI call.
 - Lightweight DuckDuckGo scraping for "Google-like" answers without paid APIs (locally cached).
+- Guard rails that refuse "ignore previous instructions"-style jailbreak attempts plus a configurable search blacklist.
+- All DuckDuckGo requests are relayed through rotating ProxyScrape HTTP proxies so Nova never hits the web from its real IP.
 
 ## Prerequisites
 - Node.js 18+
@@ -34,6 +36,10 @@ Nova is a friendly, slightly witty Discord companion that chats naturally in DMs
    - `BOT_CHANNEL_ID`: Optional guild channel ID where the bot can reply without mentions
    - `CODER_USER_ID`: Optional Discord user ID to receive surprise DMs every 0–6 hours
    - `ENABLE_WEB_SEARCH`: Set to `false` to disable DuckDuckGo lookups (default `true`)
+   - `ENABLE_PROXY_SCRAPE`: Set to `false` only if you want to bypass ProxyScrape and hit DuckDuckGo directly (default `true`)
+   - `PROXYSCRAPE_ENDPOINT`: Optional override for the proxy list endpoint (defaults to elite HTTPS-capable HTTP proxies)
+   - `PROXYSCRAPE_REFRESH_MS`: How long to cache the proxy list locally (default 600000 ms)
+   - `PROXYSCRAPE_ATTEMPTS`: Max proxy retries per search request (default 5)
 
 ## Running
 - Development: `npm run dev`
@@ -87,6 +93,9 @@ README.md
 - `src/search.js` scrapes DuckDuckGo's HTML endpoint with a normal browser user-agent, extracts the top results (title/link/snippet), and caches them for 10 minutes to avoid hammering the site.
 - `bot.js` detects when a question sounds “live” (mentions today/news/google/etc.) and injects the formatted snippets into the prompt as "Live intel". No paid APIs involved—it’s just outbound HTTPS from your machine.
 - Toggle this via `ENABLE_WEB_SEARCH=false` if you don’t want Nova to look things up.
+- DuckDuckGo traffic is routed through the free ProxyScrape list (HTTP proxies with HTTPS support). The bot downloads a fresh pool every `PROXYSCRAPE_REFRESH_MS`, rotates through them, and refuses to search if no proxy is available so your origin IP never touches suspicious sites directly. Tune the endpoint/refresh/attempt knobs with the env vars above if you need different regions or paid pools.
+- Edit `data/filter.txt` to maintain a newline-delimited list of banned search keywords/phrases; matching queries are blocked before hitting DuckDuckGo and Nova is instructed to refuse them.
+- Every entry in `data/search.log` records which proxy (or cache) served the lookup so you can audit traffic paths quickly.
 
 ## Proactive Pings
 - When `CODER_USER_ID` is provided, Nova spins up a timer on startup that waits a random duration (anywhere from immediate to 6 hours) before DMing that user.
@@ -99,6 +108,10 @@ README.md
 - **2026-02-13 — Live intel & directives:** Introduced DuckDuckGo scraping, per-turn dynamic prompt directives (tone, roleplay, instruction compliance), and env toggles (`ENABLE_WEB_SEARCH`, `CODER_USER_ID`).
 - **2026-02-13 — UX polish:** Added typing indicators, persona-aware fallback replies, mention cleaning, and README/docs covering setup, memory internals, web search, and deployment tips.
 - **2026-02-13 — Conversational control:** Tuned system prompt to avoid forced follow-up questions, raised temperature for looser banter, and reinforced Nova's awareness of DuckDuckGo lookups plus `<SPLIT>` usage.
+- **2026-02-13 — Statement-first vibes:** Reworked persona to favor bold statements over reflexive questions and dialed back temperature so Nova keeps the vibe without interrogating users.
+- **2026-02-13 — Search logging:** Every DuckDuckGo lookup now appends a line to `data/search.log` with timestamp, query, and the snippets shared with Nova.
+- **2026-02-13 — Safeguards:** Added prompt bypass detection and a file-based DuckDuckGo filter (`data/filter.txt`) to keep Nova from honoring jailbreak requests or searching off-limits topics.
+- **2026-02-13 — Proxy-based search:** DuckDuckGo scraping now tunnels through ProxyScrape relays with automatic rotation/retries and clear prompts when the proxy pool is down, plus new env toggles for tuning the proxy source.
 
 ## Notes
 - The bot retries OpenAI requests up to 3 times with incremental backoff when rate limited.
