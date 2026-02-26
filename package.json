@@ -1,7 +1,7 @@
 {
   "name": "discord-ai-companion",
   "version": "1.0.0",
-  "description": "Discord AI companion bot with automatic memory and OpenAI integration",
+  "description": "Discord AI companion bot with automatic memory and OpenRouter/OpenAI-compatible model integrations",
   "main": "src/bot.js",
   "type": "module",
   "scripts": {
@@ -16,7 +16,7 @@
     "cheerio": "^1.0.0-rc.12",
     "discord.js": "^14.15.2",
     "dotenv": "^16.4.5",
-    "openai": "^4.58.1",
+    
     "undici": "^6.19.8"
   },
   "devDependencies": {

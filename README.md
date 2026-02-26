@@ -1,13 +1,13 @@
 # Discord AI Companion
 
-Nova is a friendly, slightly witty Discord companion that chats naturally in DMs or when mentioned in servers. It runs on Node.js, uses `discord.js` v14, and leans on OpenAI's cost-efficient models plus lightweight local memory for persistent personality.
+Nova is a friendly, slightly witty Discord companion that chats naturally in DMs or when mentioned in servers. It runs on Node.js, uses `discord.js` v14, and supports OpenRouter (recommended) or OpenAI backends for model access, plus lightweight local memory for persistent personality.
 
 ## Features
 - Conversational replies in DMs automatically; replies in servers when mentioned or in a pinned channel.
-- OpenAI chat model (`gpt-4o-mini` by default) for dialogue and `text-embedding-3-small` for memory.
+- Chat model (defaults to `meta-llama/llama-3-8b-instruct` when using OpenRouter) for dialogue and a low-cost embedding model (`nvidia/llama-nemotron-embed-vl-1b-v2` by default). OpenAI keys/models may be used as a fallback.
 - Short-term, long-term, and summarized memory layers with cosine-similarity retrieval.
 - Automatic memory pruning, importance scoring, and transcript summarization when chats grow long.
-- Local SQLite memory file (no extra infrastructure) powered by `sql.js`, plus graceful retries for OpenAI rate limits.
+- Local SQLite memory file (no extra infrastructure) powered by `sql.js`, plus graceful retries for the model API (OpenRouter/OpenAI).
 - Optional "miss u" pings that DM your coder at random intervals (0–6h) when `CODER_USER_ID` is set.
 - Dynamic per-message prompt directives that tune Nova's tone (empathetic, hype, roleplay, etc.) before every OpenAI call.
 - Lightweight Google scraping for fresh answers without paid APIs (locally cached).
@@ -17,7 +17,7 @@ Nova is a friendly, slightly witty Discord companion that chats naturally in DMs
 ## Prerequisites
 - Node.js 18+ (tested up through Node 25)
 - Discord bot token with **Message Content Intent** enabled
-- OpenAI API key
+- OpenRouter or OpenAI API key
 
 ## Setup
 1. Install dependencies:
@@ -30,9 +30,11 @@ Nova is a friendly, slightly witty Discord companion that chats naturally in DMs
    ```
 3. Fill `.env` with your secrets:
    - `DISCORD_TOKEN`: Discord bot token
-   - `OPENAI_API_KEY`: OpenAI key
-   - `OPENAI_MODEL`: Optional chat model override (default `gpt-4o-mini`)
-   - `OPENAI_EMBED_MODEL`: Optional embedding model (default `text-embedding-3-small`)
+   - `USE_OPENROUTER`: Set to `true` to route requests through OpenRouter (recommended).
+   - `OPENROUTER_API_KEY`: OpenRouter API key (when `USE_OPENROUTER=true`).
+   - `OPENROUTER_MODEL`: Optional chat model override for OpenRouter (default `meta-llama/llama-3-8b-instruct`).
+   - `OPENROUTER_EMBED_MODEL`: Optional embed model override for OpenRouter (default `nvidia/llama-nemotron-embed-vl-1b-v2`).
+   - `OPENAI_API_KEY`: Optional OpenAI key (used as fallback when `USE_OPENROUTER` is not `true`).
    - `BOT_CHANNEL_ID`: Optional guild channel ID where the bot can reply without mentions
    - `CODER_USER_ID`: Optional Discord user ID to receive surprise DMs every 0–6 hours
    - `ENABLE_WEB_SEARCH`: Set to `false` to disable Google lookups (default `true`)
@@ -79,7 +81,7 @@ README.md
 1. Incoming message triggers only if it is a DM, mentions the bot, or appears in the configured channel.
 2. The user turn is appended to short-term memory immediately.
 3. The memory engine retrieves relevant long-term memories and summary text.
-4. A compact system prompt injects personality, summary, and relevant memories before passing short-term history to OpenAI.
+4. A compact system prompt injects personality, summary, and relevant memories before passing short-term history to the model API (OpenRouter/OpenAI).
 5. The reply is sent back to Discord. If Nova wants to send a burst of thoughts, she emits the `<SPLIT>` token and the runtime fans it out into multiple sequential Discord messages.
 6. Long chats automatically summarize; low-value memories eventually get pruned.
 
@@ -97,7 +99,7 @@ README.md
 
 ## Proactive Pings
 - When `CODER_USER_ID` is provided, Nova spins up a timer on startup that waits a random duration (anywhere from immediate to 6 hours) before DMing that user.
-- Each ping goes through OpenAI with the prompt "you havent messaged your coder in a while, and you wanna chat with him!" so responses stay playful and unscripted.
+- Each ping goes through the configured model API (OpenRouter/OpenAI) with the prompt "you havent messaged your coder in a while, and you wanna chat with him!" so responses stay playful and unscripted.
 - The ping gets typed out (`sendTyping`) for realism and is stored back into the memory layers so the next incoming reply has context.
 
 - The bot retries OpenAI requests up to 3 times with incremental backoff when rate limited.

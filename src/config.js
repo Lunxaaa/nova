@@ -16,13 +16,15 @@ requiredEnv.forEach((key) => {
 
 export const config = {
   discordToken: process.env.DISCORD_TOKEN || '',
-  openAiKey: process.env.OPENAI_API_KEY || '',
-  useOpenRouter: process.env.USE_OPENROUTER === 'true' || false,
+  useOpenRouter: true,
   openRouterKey: process.env.OPENROUTER_API_KEY || '',
   openrouterReferer: process.env.OPENROUTER_REFERER || '',
   openrouterTitle: process.env.OPENROUTER_TITLE || '',
-  chatModel: process.env.OPENAI_MODEL || 'meta-llama/llama-3-8b-instruct',
-  embedModel: process.env.OPENAI_EMBED_MODEL || 'nvidia/llama-nemotron-embed-vl-1b-v2',
+  // Model selection: OpenRouter model env vars (no OpenAI fallback)
+  chatModel: process.env.OPENROUTER_MODEL || 'meta-llama/llama-3-8b-instruct',
+  embedModel: process.env.OPENROUTER_EMBED_MODEL || 'nvidia/llama-nemotron-embed-vl-1b-v2',
+  // HTTP timeout for OpenRouter requests (ms)
+  openrouterTimeoutMs: process.env.OPENROUTER_TIMEOUT_MS ? parseInt(process.env.OPENROUTER_TIMEOUT_MS, 10) : 30000,
   preferredChannel: process.env.BOT_CHANNEL_ID || null,
   enableWebSearch: process.env.ENABLE_WEB_SEARCH !== 'false',
   coderUserId: process.env.CODER_USER_ID || null,
