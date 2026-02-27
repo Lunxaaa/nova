@@ -19,12 +19,6 @@ Nova is a friendly, slightly witty Discord companion that chats naturally in DMs
 - Discord bot token with **Message Content Intent** enabled
 - OpenRouter or OpenAI API key
 
-## Setup
-1. Install dependencies:
-   ```bash
-   npm install
-    ```
-
    ## Setup
    1. Install dependencies:
       ```bash
