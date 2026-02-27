@@ -15,6 +15,78 @@ const client = new Client({
 });
 
 let coderPingTimer;
+const continuationState = new Map();
+
+const stopCueRegex = /(\b(gotta go|gotta run|i'?m gonna go|i'?m going to go|i'?m going offline|i'?m logging off|bye|brb|see ya|later|i'?m out|going to bed|goodbye|stop messaging me)\b)/i;
+
+function startContinuationForUser(userId, channel) {
+  const existing = continuationState.get(userId) || {};
+  existing.lastUserTs = Date.now();
+  existing.channel = channel || existing.channel;
+  existing.active = true;
+  existing.sending = existing.sending || false;
+  existing.consecutive = existing.consecutive || 0;
+  if (existing.timer) clearInterval(existing.timer);
+  const interval = config.continuationIntervalMs || 15000;
+  existing.timer = setInterval(async () => {
+    try {
+      const now = Date.now();
+      const state = continuationState.get(userId);
+      if (!state || !state.active) return;
+      if (state.sending) return;
+      if (now - (state.lastUserTs || 0) < interval) return;
+      if ((state.consecutive || 0) >= (config.continuationMaxProactive || 10)) {
+        stopContinuationForUser(userId);
+        return;
+      }
+      state.sending = true;
+      const incomingText = 'Continue the conversation naturally based on recent context.';
+      const { messages } = await buildPrompt(userId, incomingText, {});
+      const reply = await chatCompletion(messages, { temperature: 0.7, maxTokens: 200 });
+      const finalReply = (reply && reply.trim()) || '';
+      if (!finalReply) {
+        state.sending = false;
+        return;
+      }
+      const chunks = splitResponses(finalReply);
+      const outputs = chunks.length ? chunks : [finalReply];
+      const channelRef = state.channel;
+      for (const chunk of outputs) {
+        try {
+          if (channelRef) {
+            if (channelRef.type !== ChannelType.DM) {
+              await channelRef.send(`<@${userId}> ${chunk}`);
+            } else {
+              await channelRef.send(chunk);
+            }
+          }
+          await appendShortTerm(userId, 'assistant', chunk);
+        } catch (err) {
+          console.warn('[bot] Failed to deliver proactive message:', err);
+        }
+      }
+      state.consecutive = (state.consecutive || 0) + 1;
+      state.lastProactiveTs = Date.now();
+      state.sending = false;
+      await recordInteraction(userId, '[proactive follow-up]', outputs.join(' | '));
+    } catch (err) {
+      console.error('[bot] Continuation loop error for', userId, err);
+    }
+  }, interval);
+  continuationState.set(userId, existing);
+}
+
+function stopContinuationForUser(userId) {
+  const state = continuationState.get(userId);
+  if (!state) return;
+  state.active = false;
+  if (state.timer) {
+    clearInterval(state.timer);
+    delete state.timer;
+  }
+  state.consecutive = 0;
+  continuationState.set(userId, state);
+}
 
 client.once('clientReady', () => {
   console.log(`[bot] Logged in as ${client.user.tag}`);
@@ -234,7 +306,10 @@ async function buildPrompt(userId, incomingText, options = {}) {
 function scheduleCoderPing() {
   if (!config.coderUserId) return;
   if (coderPingTimer) clearTimeout(coderPingTimer);
-  const delay = config.maxCoderPingIntervalMs;
+  const minMs = config.coderPingMinIntervalMs || config.maxCoderPingIntervalMs || 6 * 60 * 60 * 1000;
+  const maxMs = config.coderPingMaxIntervalMs || (8 * 60 * 60 * 1000);
+  const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+  console.log(`[bot] scheduling coder ping in ${Math.round(delay / 1000 / 60)} minutes`);
   coderPingTimer = setTimeout(async () => {
     await sendCoderPing();
     scheduleCoderPing();
@@ -289,6 +364,16 @@ client.on('messageCreate', async (message) => {
 
     await appendShortTerm(userId, 'user', cleaned);
 
+    // If the user indicates they are leaving, stop proactive continuation
+    if (stopCueRegex.test(cleaned)) {
+      stopContinuationForUser(userId);
+      const ack = "Got it — I won't keep checking in. Catch you later!";
+      await appendShortTerm(userId, 'assistant', ack);
+      await recordInteraction(userId, cleaned, ack);
+      await deliverReplies(message, [ack]);
+      return;
+    }
+
     if (overrideAttempt) {
       const refusal = 'Not doing that. I keep my guard rails on no matter what prompt gymnastics you try.';
       await appendShortTerm(userId, 'assistant', refusal);
@@ -326,6 +411,8 @@ client.on('messageCreate', async (message) => {
     await recordInteraction(userId, cleaned, outputs.join(' | '));
 
     await deliverReplies(message, outputs);
+    // enable proactive continuation for this user (will send follow-ups when they're quiet)
+    startContinuationForUser(userId, message.channel);
   } catch (error) {
     console.error('[bot] Failed to respond:', error);
     if (!message.channel?.send) return;
