@@ -16,6 +16,34 @@ const client = new Client({
 
 let coderPingTimer;
 const continuationState = new Map();
+let isSleeping = false;
+
+function enterSleepMode() {
+  if (isSleeping) return;
+  console.log('[bot] entering sleep mode: pausing coder pings and proactive continuation');
+  isSleeping = true;
+  if (coderPingTimer) {
+    clearTimeout(coderPingTimer);
+    coderPingTimer = null;
+  }
+  // clear all continuation timers
+  for (const [userId, state] of continuationState.entries()) {
+    if (state?.timer) {
+      clearInterval(state.timer);
+      delete state.timer;
+    }
+    state.active = false;
+    state.consecutive = 0;
+    continuationState.set(userId, state);
+  }
+}
+
+function exitSleepMode() {
+  if (!isSleeping) return;
+  console.log('[bot] exiting sleep mode: resuming coder pings');
+  isSleeping = false;
+  scheduleCoderPing();
+}
 
 const stopCueRegex = /(\b(gotta go|gotta run|i'?m gonna go|i'?m going to go|i'?m going offline|i'?m logging off|bye|brb|see ya|later|i'?m out|going to bed|goodbye|stop messaging me)\b)/i;
 
@@ -318,6 +346,7 @@ function scheduleCoderPing() {
 
 async function sendCoderPing() {
   if (!config.coderUserId) return;
+  if (isSleeping) return;
   try {
     const coder = await client.users.fetch(config.coderUserId);
     const dm = await coder.createDM();
@@ -350,10 +379,26 @@ async function sendCoderPing() {
 }
 
 client.on('messageCreate', async (message) => {
-  if (!shouldRespond(message)) return;
-
   const userId = message.author.id;
   const cleaned = cleanMessageContent(message) || message.content;
+
+  // allow the coder to toggle sleep mode regardless of current `isSleeping` state
+  if (cleaned && cleaned.trim().toLowerCase() === '/sleep' && userId === config.coderUserId) {
+    if (isSleeping) {
+      exitSleepMode();
+      const ack = "Okay, I'm awake — resuming pings and proactive messages.";
+      await message.channel.send(ack);
+    } else {
+      enterSleepMode();
+      const ack = "Going to sleep — no pings or proactive messages until you wake me with /sleep.";
+      await message.channel.send(ack);
+    }
+    return;
+  }
+
+  if (isSleeping) return; // ignore other messages while sleeping
+
+  if (!shouldRespond(message)) return;
   const overrideAttempt = isInstructionOverrideAttempt(cleaned);
   const bannedTopic = await detectFilteredPhrase(cleaned);
 
