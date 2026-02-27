@@ -23,24 +23,7 @@ Nova is a friendly, slightly witty Discord companion that chats naturally in DMs
 1. Install dependencies:
    ```bash
    npm install
-   ```markdown
-   # Discord AI Companion
-
-   Nova is a friendly, slightly witty Discord companion that chats naturally in DMs or when mentioned in servers. It runs on Node.js, uses `discord.js` v14, and supports OpenRouter (recommended) or OpenAI backends for model access, plus lightweight local memory for persistent personality.
-
-   ## Features
-   - Conversational replies in DMs automatically; replies in servers when mentioned or in a pinned channel.
-   - Chat model (defaults to `meta-llama/llama-3-8b-instruct` when using OpenRouter) for dialogue and a low-cost embedding model (`nvidia/llama-nemotron-embed-vl-1b-v2` by default). OpenAI keys/models may be used as a fallback.
-   - Short-term, long-term, and summarized memory layers with cosine-similarity retrieval.
-   - Automatic memory pruning, importance scoring, and transcript summarization when chats grow long.
-   - Local SQLite memory file (no extra infrastructure) powered by `sql.js`, plus graceful retries for the model API (OpenRouter/OpenAI).
-   - Optional "miss u" pings that DM your coder at randomized intervals (default 6–8 hours) when `CODER_USER_ID` is set. You can override the window with `CODER_PING_MIN_MS` and `CODER_PING_MAX_MS` (milliseconds).
-   - Proactive conversation continuation: Nova can continue a conversation for a quiet user by sending short follow-ups based on recent short-term memory. By default Nova will send a follow-up every 15s of user silence (configurable via `CONTINUATION_INTERVAL_MS`) and will stop after a configurable number of proactive messages (`CONTINUATION_MAX_PROACTIVE`). Users can halt continuation by saying a stop cue (e.g., "gotta go", "brb", "see ya").
-   - Dynamic per-message prompt directives that tune Nova's tone (empathetic, hype, roleplay, etc.) before every OpenAI call.
-   - Lightweight Google scraping for fresh answers without paid APIs (locally cached).
-   - Guard rails that refuse "ignore previous instructions"-style jailbreak attempts plus a configurable search blacklist.
-   - The same blacklist applies to everyday conversation—if a user message contains a banned term, Nova declines the topic outright.
-
+    ```
    ## Prerequisites
    - Node.js 18+ (tested up through Node 25)
    - Discord bot token with **Message Content Intent** enabled
