@@ -1,9 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config({ path: "../.env" });
 import { Client, GatewayIntentBits, Partials, ChannelType } from 'discord.js';
 import { config } from './config.js';
 import { chatCompletion } from './openai.js';
 import { appendShortTerm, prepareContext, recordInteraction } from './memory.js';
 import { searchWeb, appendSearchLog, detectFilteredPhrase } from './search.js';
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
