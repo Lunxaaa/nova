@@ -45,4 +45,7 @@ export const config = {
   // signals to stop or the `continuationMaxProactive` limit is reached.
   continuationIntervalMs: process.env.CONTINUATION_INTERVAL_MS ? parseInt(process.env.CONTINUATION_INTERVAL_MS, 10) : 10000,
   continuationMaxProactive: process.env.CONTINUATION_MAX_PROACTIVE ? parseInt(process.env.CONTINUATION_MAX_PROACTIVE, 10) : 10,
+  openaiKey: process.env.OPENAI_API_KEY || '',
+  openaiModel: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+  enableFallbackOpenAI: process.env.ENABLE_OPENAI_FALLBACK === 'true',
 };

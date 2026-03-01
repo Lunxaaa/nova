@@ -530,7 +530,7 @@ client.on('messageCreate', async (message) => {
       searchOutage: intelMeta.searchOutage,
     });
     const reply = await chatCompletion(messages, { temperature: 0.6, maxTokens: 200 });
-    const finalReply = (reply && reply.trim()) || "I'm here, just had a tiny brain freeze. Mind repeating that?";
+    const finalReply = (reply && reply.trim()) || "Brain crashed, Please try again";
     const chunks = splitResponses(finalReply);
     const outputs = chunks.length ? chunks : [finalReply];
 
@@ -544,7 +544,7 @@ client.on('messageCreate', async (message) => {
   } catch (error) {
     console.error('[bot] Failed to respond:', error);
     if (!message.channel?.send) return;
-    await message.channel.send('Hit a snag reaching my brain server. Try again in a few seconds?');
+    await message.channel.send('Someone tell Luna there is a problem with my AI.');
   }
 });
 
