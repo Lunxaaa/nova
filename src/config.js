@@ -34,7 +34,7 @@ export const config = {
   legacyMemoryFile,
   summaryTriggerChars: 3000,
   memoryPruneThreshold: 0.2,
-  maxMemories: 200,
+  maxMemories: 8000,
   relevantMemoryCount: 5,
   // Proactive continuation settings: when a user stops replying, Nova can continue
   // the conversation every `continuationIntervalMs` milliseconds until the user
