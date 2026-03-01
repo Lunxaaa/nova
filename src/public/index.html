@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nova Memory Dashboard</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:system-ui, sans-serif;
+    background:#121212;
+    color:#e0e0e0;
+    min-height:100vh;
+    padding:1rem;
+  }
+  .container{max-width:900px;margin:0 auto;}
+  h1{font-size:2rem;font-weight:700;color:#fff;margin-bottom:1rem;text-align:center;}
+  .mood-card,.section-card{background:#1e1e1e;border-radius:8px;padding:1.5rem;margin:1rem 0;box-shadow:0 4px 12px rgba(0,0,0,0.6);}
+  h2{font-size:1.5rem;color:#fff;border-bottom:2px solid #333;padding-bottom:0.5rem;margin-bottom:1rem;}
+  h3{font-size:1.2rem;color:#ddd;margin-top:1rem;margin-bottom:0.75rem;}
+  .user-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.75rem;}
+  .user-card{background:#292929;padding:1rem;border-radius:6px;cursor:pointer;transition:transform .2s,box-shadow .2s;color:#fff;}
+  .user-card:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,0.7);}
+  .user-id{font-weight:600;font-size:1.1rem;margin-bottom:0.4rem;}
+  .user-summary{font-size:0.9rem;opacity:0.85;line-height:1.3;}
+  table{width:100%;border-collapse:collapse;margin-bottom:1rem;font-size:0.9rem;}
+  th{background:#333;color:#fff;padding:.75rem;text-align:left;}
+  td{padding:.75rem;border-bottom:1px solid #2a2a2a;}
+  tr:nth-child(even){background:#1e1e1e;}
+  .empty{color:#777;font-style:italic;text-align:center;padding:1rem;}
+  button{background:#444;color:#fff;border:none;padding:.5rem 1rem;border-radius:4px;cursor:pointer;transition:background .2s;}
+  button:hover{background:#555;}
+  .delete-btn{background:#880000;}
+  .delete-btn:hover{background:#aa0000;}
+  input[type=text]{width:100%;padding:.6rem;border:1px solid #333;border-radius:4px;background:#212121;color:#e0e0e0;}
+  .search-box{display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0;}
+  .search-results{background:#1e1e1e;border-left:4px solid #555;padding:1rem;border-radius:4px;margin-top:1rem;}
+  .search-results ul{list-style:none;}
+  .search-results li{padding:.6rem;margin-bottom:.4rem;background:#292929;border-radius:4px;}
+  .score-badge{display:inline-block;background:#555;color:#fff;padding:.2rem .4rem;border-radius:3px;font-size:.8rem;margin-right:.4rem;}
+  .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;}
+  .modal{background:#1e1e1e;padding:2rem;border-radius:8px;max-height:90vh;overflow:auto;width:90%;max-width:800px;position:relative;}
+  .modal-close{position:absolute;top:0.5rem;right:0.75rem;font-size:1.5rem;color:#bbb;cursor:pointer;}
+  .loading{color:#999;text-align:center;font-weight:600;padding:1rem;}
+  .error{background:#550000;color:#fff;padding:1rem;border-radius:4px;}
+  @media(max-width:600px){.user-list{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🧠 Nova Memory Dashboard</h1>
+  <div id="mood"></div>
+  <div class="section-card">
+    <h2>Users</h2>
+    <div id="user-list" class="user-list">loading…</div>
+  </div>
+</div>
+<div id="modal" class="modal-overlay">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal()">&times;</span>
+    <div id="detail"></div>
+  </div>
+</div>
+<script>
+async function fetchJson(path, opts){const res=await fetch(path,opts);if(!res.ok)throw new Error(res.statusText);return res.json();}
+function formatDate(ts){return new Date(ts).toLocaleString();}
+function closeModal(){document.getElementById('modal').style.display='none';}
+
+async function loadMood(){
+  try{
+    const data=await fetchJson('/api/mood');
+    const moodCard=document.createElement('div');
+    moodCard.className='mood-card';
+    moodCard.innerHTML='<strong>'+data.mood.name+'</strong><p>'+data.mood.description+'</p><p>'+data.thought+'</p>';
+    const old=document.getElementById('mood');
+    old.replaceWith(moodCard);
+    moodCard.id='mood';
+  }catch(e){console.error(e);}
+}
+
+async function loadUsers() {
+  console.log('client: fetching users');
+  try {
+    const users = await fetchJson('/api/users');
+    console.log('client: got users', users);
+    const container = document.getElementById('user-list');
+    if (!users.length) {
+      container.innerHTML = '<div class="empty">No users yet</div>';
+      return;
+    }
+    container.innerHTML = users.map(u =>
+      '<div class="user-card" onclick="showUser(\'' + u.id + '\')">' +
+        '<div class="user-id">👤 ' + u.id + '</div>' +
+        '<div class="user-summary">' + (u.summary || 'No summary yet') + '</div>' +
+      '</div>'
+    ).join('');
+  } catch (e) {
+    console.error('client: loadUsers error', e);
+    document.getElementById('user-list').innerHTML = '<div class="error">Error loading users: ' + e.message + '</div>';
+  }
+}
+
+async function showUser(id){
+  console.log('client: showUser',id);
+  const detail=document.getElementById('detail');
+  detail.innerHTML='<div class="loading">Loading…</div>';
+  document.getElementById('modal').style.display='flex';
+  try{
+    const [shortR,longR]=await Promise.all([
+      fetchJson('/api/users/'+id+'/short'),
+      fetchJson('/api/users/'+id+'/long')
+    ]);
+    let html='<h2>Memory for '+id+'</h2>';
+    html+='<h3>Short-term</h3>';
+    if(shortR.length){
+      html+='<table><tr><th>Role</th><th>Content</th><th>When</th></tr>';
+      shortR.forEach(r=>{
+        html+='<tr><td><strong>'+r.role+'</strong></td><td>'+r.content.substring(0,100)+(r.content.length>100?'…':'')+'</td><td>'+formatDate(r.timestamp)+'</td></tr>';
+      });
+      html+='</table>';
+    }else html+='<p class="empty">none</p>';
+    html+='<h3>Long-term</h3>';
+    if(longR.length){
+      html+='<table><tr><th>Imp</th><th>Content</th><th>When</th><th></th></tr>';
+      longR.forEach(r=>{
+        const imp=r.importance? r.importance.toFixed(2):'N/A';
+        const impCol=r.importance? (r.importance>0.8?'#ff6b6b':r.importance>0.5?'#ffd43b':'#51cf66'):'#999';
+        html+='<tr><td><span class="score-badge" style="background:'+impCol+'">'+imp+'</span></td>'+
+             '<td>'+r.content.substring(0,100).replace(/</g,'&lt;')+(r.content.length>100?'…':'')+'</td>'+
+             '<td>'+formatDate(r.timestamp)+'</td>'+
+             '<td><button class="delete-btn" onclick="deleteEntry(\''+id+'\',\''+r.id+'\')">Del</button></td></tr>';
+      });
+      html+='</table>';
+    }else html+='<p class="empty">none</p>';
+    html+='<h3>Search</h3><div class="search-box"><input id="search-q" type="text" placeholder="query…"/><button onclick="runSearch(\''+id+'\')">Search</button></div><div id="search-results"></div>';
+    detail.innerHTML=html;
+  }catch(e){
+    detail.innerHTML='<div class="error">error: '+e.message+'</div>';
+  }
+}
+
+async function deleteEntry(user, id) {
+  console.log('client: deleteEntry', user, id);
+  if (!confirm('Are you sure you want to delete this memory?')) return;
+  try {
+    await fetch('/api/users/' + user + '/long/' + id, { method: 'DELETE' });
+    showUser(user);
+  } catch (e) {
+    alert('Error deleting memory: ' + e.message);
+  }
+}
+
+async function runSearch(user){
+  const q=document.getElementById('search-q').value;
+  if(!q){return;}
+  const container=document.getElementById('search-results');
+  container.innerHTML='<div class="loading">Searching…</div>';
+  try{
+    const res=await fetchJson('/api/users/'+user+'/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})});
+    if(!res.length){container.innerHTML='<div class="search-results"><p class="empty">none</p></div>';return;}
+    let html='<div class="search-results"><ul>';
+    res.forEach(r=>{const score=r.score?r.score.toFixed(3):'?';html+='<li><span class="score-badge">'+score+'</span>'+r.content.substring(0,100).replace(/</g,'&lt;')+(r.content.length>100?'…':'')+'</li>';});
+    html+='</ul></div>';
+    container.innerHTML=html;
+  }catch(e){container.innerHTML='<div class="error">search error</div>';}
+}
+
+loadMood();
+loadUsers();
+</script>
+</body>
+</html>

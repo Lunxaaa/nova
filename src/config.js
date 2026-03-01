@@ -36,6 +36,10 @@ export const config = {
   memoryPruneThreshold: 0.2,
   maxMemories: 8000,
   relevantMemoryCount: 5,
+  // Optional local dashboard that runs alongside the bot. Enable with
+  // `ENABLE_DASHBOARD=true` and customize port with `DASHBOARD_PORT`.
+  dashboardEnabled: process.env.ENABLE_DASHBOARD === 'true',
+  dashboardPort: process.env.DASHBOARD_PORT ? parseInt(process.env.DASHBOARD_PORT, 10) : 3000,
   // Proactive continuation settings: when a user stops replying, Nova can continue
   // the conversation every `continuationIntervalMs` milliseconds until the user
   // signals to stop or the `continuationMaxProactive` limit is reached.

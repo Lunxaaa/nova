@@ -6,8 +6,9 @@ Nova is a friendly, slightly witty Discord companion that chats naturally in DMs
 - Conversational replies in DMs automatically; replies in servers when mentioned or in a pinned channel.
 - Chat model (defaults to `meta-llama/llama-3-8b-instruct` when using OpenRouter) for dialogue and a low-cost embedding model (`nvidia/llama-nemotron-embed-vl-1b-v2` by default). OpenAI keys/models may be used as a fallback.
 - Short-term, long-term, and summarized memory layers with cosine-similarity retrieval.
-- **Rotating “daily mood” engine** that adjusts Nova’s personality each day (calm, goblin, philosopher, etc.). Mood influences emoji use, sarcasm, response length, and hype.
+- **Rotating “daily mood” engine** that adjusts Nova’s personality each day (calm, goblin, philosopher, etc.). Mood influences emoji use, sarcasm, response length, and hype.  (Now randomized each run rather than fixed by calendar date.)
 - **LLM-powered live–intel web search**: Nova uses the LLM itself to decide whether a topic needs a live web search. If you mention something unfamiliar or that requires current info, it automatically Googles first and uses the results in its response—without triggering on casual chat.
+- **Optional local memory dashboard** (enabled with `ENABLE_DASHBOARD=true`): spin up a simple browser UI alongside the bot. Inspect stored memories by user, delete entries, run similarity queries, view importance scores, and peek at Nova’s current mood and quirky “status” of the day. The dashboard runs on `DASHBOARD_PORT` (3000 by default) and is entirely optional.
 
 - Automatic memory pruning, importance scoring, and transcript summarization when chats grow long.
 - Local SQLite memory file (no extra infrastructure) powered by `sql.js`, plus graceful retries for the model API (OpenRouter/OpenAI).
@@ -40,6 +41,8 @@ Nova is a friendly, slightly witty Discord companion that chats naturally in DMs
       - `OPENAI_API_KEY`: Optional OpenAI key (used as fallback when `USE_OPENROUTER` is not `true`).
       - `BOT_CHANNEL_ID`: Optional guild channel ID where the bot can reply without mentions
       - `CODER_USER_ID`: Optional Discord user ID to receive surprise DMs every 6–8 hours (configurable)
+      - **`ENABLE_DASHBOARD`**: Set to `true` to launch a simple local web dashboard for inspecting memory (off by default)
+      - **`DASHBOARD_PORT`**: Port on which the dashboard listens (default `3000`)
       - `ENABLE_WEB_SEARCH`: Set to `false` to disable Google lookups (default `true`)
       - `CONTINUATION_INTERVAL_MS`: (optional) ms between proactive follow-ups (default 15000)
       - `CONTINUATION_MAX_PROACTIVE`: (optional) max number of proactive follow-ups (default 10)
@@ -93,6 +96,25 @@ Nova is a friendly, slightly witty Discord companion that chats naturally in DMs
    6. Long chats automatically summarize; low-value memories eventually get pruned.
 
    Nova may also enter a proactive continuation mode after replying: if you stay quiet, she can send short, context-aware follow-ups at the configured interval until you stop her with a short phrase like "gotta go" or after the configured maximum number of follow-ups.
+
+## Local Dashboard (optional)
+
+> **New:** A lightweight web dashboard can now be served alongside the bot for inspecting and managing memory. It’s entirely optional; if you don’t set `ENABLE_DASHBOARD=true`, the bot behaves exactly as before.
+
+If you set `ENABLE_DASHBOARD=true` in your `.env` the bot will also spin up a tiny Express web server on `DASHBOARD_PORT` (3000 by default).
+
+The dashboard lets you:
+
+- Browse all users that the bot has spoken with.
+- Inspect short‑term and long‑term memory entries, including their importance scores and timestamps.
+- Delete individual long‑term memories if you want to clean up or correct something.
+- Run a similarity search to see which stored memories are most relevant to a query.
+- Peek at the current mood the bot is using and a quirky “status/thought” message generated each day.
+
+Once the bot is running, open your browser and go to `http://localhost:3000` (or your configured port).
+The front end is intentionally bare‑bones; feel free to extend it with more controls or better styling.
+
+> **Debug tip:** if the page just shows "Users" and never populates, open your browser's developer tools (F12) and look at the **Console** and **Network** tabs. The dashboard logs each request and any errors both in the browser console and in the bot's terminal output, which makes it easier to see why the UI might be stuck.
 
    ## Dynamic Prompting
    - Each turn, Nova inspects the fresh user message (tone, instructions, roleplay cues, explicit “split this” requests) plus the last few utterances.

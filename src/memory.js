@@ -113,6 +113,11 @@ const createSchema = (db) => {
       timestamp INTEGER NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS daily_thoughts (
+      date TEXT PRIMARY KEY,
+      thought TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
   `);
 };
 
@@ -301,8 +306,7 @@ const retrieveRelevantMemories = async (db, userId, query) => {
       };
     })
     .sort((a, b) => b.score - a.score)
-    .slice(0, config.relevantMemoryCount)
-    .map(({ score, ...rest }) => rest);
+    .slice(0, config.relevantMemoryCount);
 };
 
 export async function appendShortTerm(userId, role, content) {
@@ -356,5 +360,56 @@ export async function pruneLowImportanceMemories(userId) {
   const db = await loadDatabase();
   ensureUser(db, userId);
   run(db, 'DELETE FROM long_term WHERE user_id = ? AND importance < ?', [userId, config.memoryPruneThreshold]);
+  await persistDb(db);
+}
+
+// -----------------------------------------------------------------------------
+// Dashboard helpers
+// -----------------------------------------------------------------------------
+
+export async function listUsers() {
+  const db = await loadDatabase();
+  return all(db, 'SELECT id, summary, last_updated FROM users');
+}
+
+export async function getAllShortTerm(userId) {
+  const db = await loadDatabase();
+  return fullShortTerm(db, userId);
+}
+
+export async function getLongTermMemories(userId) {
+  const db = await loadDatabase();
+  return all(
+    db,
+    'SELECT id, content, importance, timestamp FROM long_term WHERE user_id = ? ORDER BY timestamp DESC',
+    [userId],
+  );
+}
+
+export async function deleteLongTerm(userId, entryId) {
+  const db = await loadDatabase();
+  run(db, 'DELETE FROM long_term WHERE user_id = ? AND id = ?', [userId, entryId]);
+  await persistDb(db);
+}
+
+export async function findSimilar(userId, query) {
+  const db = await loadDatabase();
+  return retrieveRelevantMemories(db, userId, query);
+}
+
+// Daily thought storage
+export async function getDailyThoughtFromDb(date) {
+  const db = await loadDatabase();
+  const row = get(db, 'SELECT thought FROM daily_thoughts WHERE date = ?', [date]);
+  return row?.thought || null;
+}
+
+export async function saveDailyThought(date, thought) {
+  const db = await loadDatabase();
+  run(db, 'INSERT OR REPLACE INTO daily_thoughts (date, thought, created_at) VALUES (?, ?, ?)', [
+    date,
+    thought,
+    Date.now(),
+  ]);
   await persistDb(db);
 }

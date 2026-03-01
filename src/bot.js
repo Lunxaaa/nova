@@ -1,10 +1,12 @@
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
-import { Client, GatewayIntentBits, Partials, ChannelType } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, ChannelType, ActivityType } from 'discord.js';
 import { config } from './config.js';
 import { chatCompletion } from './openai.js';
 import { appendShortTerm, prepareContext, recordInteraction } from './memory.js';
 import { searchWeb, appendSearchLog, detectFilteredPhrase } from './search.js';
+import { getDailyMood, setMoodByName, getDailyThought, generateDailyThought } from './mood.js';
+import { startDashboard } from './dashboard.js';
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -19,8 +21,6 @@ let coderPingTimer;
 const continuationState = new Map();
 let isSleeping = false;
 
-// mood override for testing
-let overrideMood = null;
 
 function enterSleepMode() {
   if (isSleeping) return;
@@ -120,12 +120,35 @@ function stopContinuationForUser(userId) {
   continuationState.set(userId, state);
 }
 
-client.once('clientReady', () => {
+if (config.dashboardEnabled) {
+  startDashboard();
+}
+
+async function onReady() {
   console.log(`[bot] Logged in as ${client.user.tag}`);
   scheduleCoderPing();
   const m = getDailyMood();
   console.log(`[bot] current mood on startup: ${m.name} — ${m.description}`);
-});
+
+  try {
+    await generateDailyThought();
+    const thought = await getDailyThought();
+    if (thought && client.user) {
+      console.log(`[bot] setting presence with thought: "${thought}"`);
+      await client.user.setPresence({ 
+        status: 'online', 
+        activities: [{ name: thought, type: ActivityType.Playing }] 
+      });
+      console.log('[bot] presence set successfully');
+    } else {
+      console.warn('[bot] no thought or client user available');
+    }
+  } catch (err) {
+    console.error('[bot] failed to set presence:', err);
+  }
+}
+
+client.once('ready', onReady);
 
 function shouldRespond(message) {
   if (message.author.bot) return false;
@@ -160,26 +183,6 @@ const toneHints = [
   { label: 'excited', regex: /(excited|hyped|omg|yay|stoked)/i },
 ];
 
-const dailyMoods = [
-  ['Calm','Soft tone; minimal emojis; low sarcasm; concise and soothing.'],
-  ['Goblin','Chaotic, high‑energy replies; random emojis; extra sarcasm and hype.'],
-  ['Philosopher','Deep, reflective answers; longer and thoughtful, a bit poetic.'],
-  ['Hype','Enthusiastic and upbeat; lots of exclamation marks, emojis and hype.'],
-  ['Sassy','Playful sarcasm without being mean; snappy replies and quips.'],
-].map(([n,d])=>({name:n,description:d}));
-
-function getDailyMood() {
-  if (overrideMood) return overrideMood;
-  const day = Math.floor(Date.now() / 86400000);
-  return dailyMoods[day % dailyMoods.length];
-}
-
-function setMoodByName(name) {
-  if (!name) return null;
-  const found = dailyMoods.find((m) => m.name.toLowerCase() === name.toLowerCase());
-  if (found) overrideMood = found;
-  return found;
-}
 
 
 function detectTone(text) {
@@ -557,8 +560,15 @@ client.on('messageCreate', async (message) => {
 });
 
 if (!config.discordToken) {
-  console.error('Missing DISCORD_TOKEN. Check your .env file.');
-  process.exit(1);
+  if (config.dashboardEnabled) {
+    console.warn('[bot] DISCORD_TOKEN not set; running in dashboard-only mode.');
+  } else {
+    console.error('Missing DISCORD_TOKEN. Check your .env file.');
+    process.exit(1);
+  }
+} else {
+  client.login(config.discordToken).catch((err) => {
+    console.error('[bot] login failed:', err);
+    if (!config.dashboardEnabled) process.exit(1);
+  });
 }
-
-client.login(config.discordToken);

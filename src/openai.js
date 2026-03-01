@@ -58,7 +58,6 @@ async function postJson(path, body) {
     }
     return res.json();
   } catch (err) {
-    // normalize AbortError into a retryable code
     if (err.name === 'AbortError' || err.message?.includes('timed out')) {
       const e = new Error(`Connect Timeout Error after ${timeout}ms`);
       e.code = 'UND_ERR_CONNECT_TIMEOUT';
@@ -85,7 +84,6 @@ export async function chatCompletion(messages, options = {}) {
   };
 
   const data = await withRetry(() => postJson('/chat/completions', payload));
-  // OpenRouter uses OpenAI-compatible response shape
   const text = data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || '';
   return (text && String(text).trim()) || '';
 }
