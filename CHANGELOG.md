@@ -2,8 +2,6 @@
 
 All notable changes made during this working session (March 1, 2026).
 
-## Unreleased
-
 ### Token + performance optimizations
 - Added `src/prompt.js` to centralize prompt construction (`buildPrompt`) and reduce repeated prompt-building logic.
 - Added a short-lived in-memory context cache in `src/bot.js` to reuse prepared context across the continuation loop and normal replies.
