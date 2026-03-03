@@ -261,12 +261,13 @@ async function onReady() {
 
   try {
     await generateDailyThought();
+
     const thought = await getDailyThought();
     if (thought && client.user) {
       console.log(`[bot] setting presence with thought: "${thought}"`);
-      await client.user.setPresence({ 
-        status: 'online', 
-        activities: [{ name: thought, type: ActivityType.Playing }] 
+      await client.user.setPresence({
+        status: 'online',
+        activities: [{ name: thought, type: ActivityType.Playing }],
       });
       console.log('[bot] presence set successfully');
     } else {
